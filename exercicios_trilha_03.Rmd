@@ -1,0 +1,467 @@
+---
+title: "Análise exploratória de dados"
+author: "Marcos Vinícius Tadeu Mastrocolla"
+date: "16/05/2022"
+output:
+  word_document: 
+    reference_docx: style_exercicios.docx
+---
+
+```{r setup, echo = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+	fig.align = "center",
+	fig.keep = "last",
+	fig.show = "hide",
+	cache = TRUE,
+	comment = "",
+	include = FALSE,
+	results = "markup",
+	tidy = TRUE
+)
+```
+# Atividades trilha 03
+
+### Importando bibliotecas
+Para esta análise exploratória, serão utilizadas as bibliotecas abaixo.
+```{r echo=TRUE}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(data.table)
+library(patchwork)
+```
+
+### Importando a base de dados
+```{r, dados}
+data(diamonds)
+```
+
+### Visualizando a estrutura dos dados
+
+```{r}
+# str(diamonds)
+str(diamonds)
+```
+Foram importadas 53.940 observações de 10 variáveis conforme se esperava. Também é possível observar que e os tipos de dados estão de acordo com suas respectivas variáveis.
+
+
+### Visualizando o inicio e o final dos dados
+Conferindo se o arquivo foi importado corretamente e se não há necessidade de ajustes.
+
+```{r, visualizando}
+# Primeiras observações
+head(diamonds, 15)
+
+# Últimas observações
+tail(diamonds, 15)
+```
+
+### Conferindo alguns valores
+Verificando se as variáveis possuem valores que podem ser considerados inválidos, começando pelo comprimento _x_.
+```{r}
+# Maior comprimento (x)
+print(max(diamonds$x))
+
+# Menor comprimento (x)
+print(min(diamonds$x))
+```
+Parece haver registro inválido da variável _x_, vamos conferir.
+```{r}
+zero_x <- (diamonds$x == 0)
+# Índice dos registros inválidos
+print(which(zero_x))
+```
+Algumas observações de _x_ possuem registros iguais a ZERO. Um diamante não pode ter comprimento 0.
+Apesar de os registros estarem de acordo com o dicionário, para esta atividade estes registros serão considerados não úteis e serão retirados do dataframe para fins de aperfeiçoamento na linguagem R.
+
+```{r}
+diamonds <- diamonds[!zero_x,]
+# Conferindo o novo valor mínimo de x
+print(min(diamonds$x))
+```
+
+Continuando e verificando a largura _y_.
+```{r}
+# Maior largura
+print(max(diamonds$y))
+
+# Menor largura
+print(min(diamonds$y))
+```
+Não há registro que possa ser considerado inválido para a largura, seguimos verificando a profundidade _z_.
+```{r}
+# Maior largura
+print(max(diamonds$z))
+
+# Menor largura
+print(min(diamonds$z))
+```
+Assim como para a variável _x_, temos registros inválidos para a profundidade _z_.
+```{r}
+zero_z <- diamonds$z == 0 
+# Índide dos registros inválidos
+print(which(zero_z))
+```
+Retirando os valores inválidos de z do dataframe.
+```{r}
+diamonds <- diamonds[!zero_z,]
+# Conferindo o novo valor mínimo de z
+print(min(diamonds$z))
+```
+Vamos conferir o percentual de profundidade _depth_.
+
+```{r}
+# Maior profundidade
+max(diamonds$depth)
+
+# Menor profundidade
+min(diamonds$depth)
+```
+Os valores máximo e mínimo da variável _depth_ não parecem inválidos, mas podem estar errados.
+Vamos conferir se estão de acordo com a metodologia de cálculo descrita no dicionário.
+
+```{r}
+# No dicionário não há multiplicação por 100, mas é necessário para obtençao do resultado em %
+depth.calc <- round(((2 * diamonds$z) / ((diamonds$x + diamonds$y))) * 100, 1)
+
+# Comparando as primeiras linhas do dataframe com os valores calculados
+head(depth.calc, 10)
+head(diamonds$depth, 10)
+
+# Comparando as médias
+print(mean(depth.calc))
+print(mean(diamonds$depth))
+
+# Comparando os minímos
+print(min(depth.calc))
+print(min(diamonds$depth))
+
+# Comparando os máximos
+print(max(depth.calc))
+print(max(diamonds$depth))
+
+
+
+```
+Há informações que precisam de maiores esclarecimentos no dataset pois há valores da variável _depth_ que não se assemelham àqueles calculados de acordo com a metodologia de cálculo descrita no dicionário. Comparando o valor mínimo `r min(diamonds$depth)`% e máximo `r max(diamonds$depth)`% da variável _depth_ com os valores min `r min(depth.calc)`% e máximo `r max(depth.calc)`% do vetor _depth.calc_, que armazena o percentual de profundidade calculado usando as variáveis _x_, _y_ e _z_ de cada diamante, podemos observar que os valores são muito discrepantes.
+A metodologia de cálculo está correta conforme pesquisa em sites especializados no assunto, como [www.diamonds.pro](https://www.diamonds.pro/education/diamond-depth-and-table/).
+
+Sabendo que existem valores divergentes vamos encontrá-los.
+```{r}
+# Vetor booleano com os depth diferentes
+depth.diferentes <- (diamonds$depth - depth.calc) != 0
+
+# Contando todas as ocorrências de depth.diferentes
+count.depth.diferentes <- (sum(depth.diferentes))
+print(count.depth.diferentes)
+
+```
+São `r count.depth.diferentes` registros com valores de _depth_ diferentes do que foi calculado com as medidas dos próprios diamantes. Esse total representa aproximadamente 7% do dataset, um valor significativo.
+É preciso saber o quão errado estão estes valores.
+
+```{r}
+# Separando os registros com valores divergentes de depth em um novo dataframe
+diamonds.diverg <- diamonds[depth.diferentes,]
+
+# Acrescentando uma coluna com o valor da diferença de depth (observado -  calculado)
+diamonds.diverg$diferenca <- round(diamonds.diverg$depth - depth.calc[depth.diferentes], 2)
+print(head(diamonds.diverg, 20))
+print(tail(diamonds.diverg, 20))
+```
+Conferindo o inicio e o final deste novo dataframe, vemos que a variável _diferenca_ possui muitos valores repetidos, principalmente os valores -0.1 e 0.1. Vamos contar quantos valores repetidos temos:
+
+```{r}
+# Contando os valores repetidos da variável diferenca
+valores.repetidos <- n_distinct(diamonds.diverg$diferenca)
+print(valores.repetidos)
+```
+Os `r nrow(diamonds.diverg)` registros divergentes são compostos por `r valores.repetidos` valores que se repetem. Vejamos o quais valores são e o quanto cada um se repete:
+
+```{r}
+print(as.data.frame(table(diamonds.diverg$diferenca)))
+```
+Os valores que mais se repetem são -0.1 e 0.1, indicando que a divergência dos valores é pequena e cabe analisar a necessidade de considerar ou não estes dados, ajustá-los para os valores calculados ou ainda investigar mais a fundo o motivo da divergência tentar entender o que ocasionou esta diferença. Para esta atividade, estes dados serão utilizados como estão.
+
+
+
+### Resetando o index do dataframe
+Como foram excluídas observações do dataframe (observações de _x_=0 e _z_=0), é importante reindexar o dataframe para evitar possíveis erros.
+```{r}
+rownames(diamonds) <- NULL
+
+```
+
+
+### Sumário das variáveis
+Para entender um pouco mais a distribuição dos dados, a função _summary()_ pode auxiliar.
+```{r}
+summary(diamonds)
+```
+### Explorando algumas variáveis
+
+###Algumas explorações com o preço dos diamantes.
+
+```{r fig.dim = c(5,7), fig.cap = "Fig. 01: Histograma com a distribuição dos preços dos diamantes"}
+media_preco <- mean(diamonds$price)
+mediana_preco <- median(diamonds$price)
+price_histogram <- ggplot(diamonds,
+                          aes(x = price)) +
+  geom_histogram(colour = "black",
+                 fill = "azure2",
+                 bins = 30) +
+  annotate("text",
+           x = (mediana_preco + 2000),
+           y = 14800,
+           label = "Mediana",
+           col = "darkorange",
+           size = 6) +
+  annotate("text",
+           x = 7000,
+           y = 7200,
+           label = "Preço médio",
+           col = "darkslategray", size = 6) +
+  geom_segment(aes(x = mediana_preco,
+                   xend = mediana_preco,
+                   y = 0,
+                   yend = 15000),
+               color = "darkorange",
+               size = 1) +
+  geom_segment(aes(x = media_preco,
+                   xend = media_preco,
+                   y = 0,
+                   yend = 7500),
+               color = "darkslategray",
+               size = 1) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black")) +
+  labs(title = "Distribuição de preços dos diamantes",
+       x = "Preço",
+       x= "Frequência")
+price_histogram
+
+```
+Conforme o gráfico acima, mais da metade do número de diamantes possui preço abaixo da média, que é `r mean(diamonds$price)`. Isto se deve ao deslocado para a direita causado pelos altos preços de poucos outros diamantes.
+Observando a distribuição através de um _boxplot_ vemos onde estão os quartis da variável preço bem como seus outliers. 
+
+```{r fig.dim = c(5,7), fig.cap = "Fig. 02: Boxplot com os quartis dos preços dos diamantes"}
+price_boxplot <- ggplot(diamonds, aes(x=price)) +
+  geom_boxplot(fill="azure2",
+               outlier.color = "black",
+               outlier.alpha = 0.1,
+               outlier.shape = 5,
+               outlier.size = 0.1) +
+  expand_limits(x = c(media_preco, 7500)) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank()) +
+  geom_segment(aes(x = mediana_preco,
+                   xend = mediana_preco,
+                   y = -0.375,
+                   yend = 0.375),
+               color = "darkorange", size = 1) +
+  labs(title = "Distribuição de preços dos diamantes",
+       x = NULL,
+       y = NULL)
+price_boxplot
+```
+```{r}
+price_boxplot <- ggplot(diamonds, aes(x=price)) +
+  geom_boxplot(fill="azure2",
+               outlier.color = "black",
+               outlier.alpha = 0.1, 
+               outlier.shape = 5,
+               outlier.size = 0.1) +
+  expand_limits(x = c(media_preco, 7500)) +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+  panel.background = element_blank(), 
+  axis.line = element_line(colour = "black"),
+  axis.ticks.y = element_blank(), 
+  axis.text.y = element_blank()) +
+  geom_segment(aes(x = mediana_preco,
+                   xend = mediana_preco,
+                   y = -0.375,
+                   yend = 0.375),
+               color = "darkorange", size = 1) +
+  labs(title = "Distribuição de preços dos diamantes",
+       x = NULL,
+       y = NULL)
+
+
+price_histogram <- ggplot(diamonds, aes(x = price)) +
+  geom_histogram(colour = "black",
+                 fill = "azure2"
+                 , bins = 30) +
+  annotate("text",
+           x = 10000,
+           y = 10200,
+           label = "Mediana",
+           col = "darkorange",
+           size = 6) +
+  annotate("text",
+           x = 10000,
+           y = 7200,
+           label = "Preço médio",
+           col = "darkslategray",
+           size = 6) +
+  geom_segment(aes(x = mediana_preco,
+                   xend = mediana_preco,
+                   y = 0,
+                   yend = 14500),
+               color = "darkorange",
+               size = 1) +
+  geom_segment(aes(x = media_preco,
+                   xend = media_preco,
+                   y = 0, yend = 14500),
+               color = "darkslategray",
+               size = 1) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()) +
+  labs(title = NULL,
+       x = NULL,
+       y = "Frequência")
+```
+
+Olhando os dois gráficos da distribuição de perto, e traçando duas linhas para a mediana dos preços e o preço médio fica mais fácil visualizar em quais faixas de preço se concentram a grande maioria dos diamantes.
+
+```{r fig.dim = c(5,7), fig.cap = "Fig. 03: Histograma e boxplot juntos para uma melhor comparação"}
+price_boxplot / price_histogram
+```
+### Explorando a variável carat
+Olhando para o peso dos diamantes, percebe-se que mais da metade dos diamantes tem peso abaixo da média.
+```{r fig.dim = c(5,7), fig.cap = "Fig. 04: Histograma da distribuição dos diamantes por carat e com as principais medidas de centro"}
+media_carat <- mean(diamonds$carat)
+mediana_carat <- median(diamonds$carat)
+carat_histogram <- ggplot(diamonds, aes(x = carat)) +
+  geom_histogram(colour = "black",
+                 fill = "azure2"
+                 , bins = 30) +
+  annotate("text",
+           x = 2,
+           y = 11000,
+           label = "Mediana",
+           col = "darkorange",
+           size = 6) +
+  annotate("text",
+           x = 2,
+           y = 9000,
+           label = "Carat médio"
+           , col = "darkslategray",
+           size = 6) +
+  geom_segment(aes(x = mediana_carat,
+                   xend = mediana_carat,
+                   y = 0, 
+                   yend = 15000), 
+               color = "darkorange", 
+               size = 1) +
+  geom_segment(aes(x = media_carat,
+                   xend = media_carat,
+                   y = 0, yend = 15000),
+               color = "darkslategray",
+               size = 1) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black")) +
+  labs(title = "Distribuição de peso dos diamantes",
+       x = "Carat",
+       y = "Frequência")
+carat_histogram
+```
+Detectando outliers nas variáveis _x_, _y_, _z_ e _depth_ através de boxplots.
+
+```{r fig.dim = c(5,7), fig.cap = "Fig. 05: Boxplot com os quartis da variável x"}
+x_boxplot <- ggplot(diamonds, aes(x = x)) +
+  geom_boxplot(fill = "azure2") +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.line = element_line(colour = "black"),
+        axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank()) +
+  labs(title = "Comprimento dos diamantes", 
+       x = "x (mm)",
+       y = NULL)
+x_boxplot
+```
+
+```{r fig.dim = c(5,7), fig.cap = "Fig. 06: Boxplot com os quartis da variável y"}
+y_boxplot <- ggplot(diamonds, aes(x = y)) +
+  geom_boxplot(fill = "azure2") +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"), 
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) +
+  labs(title = "Largura dos diamantes",
+       x = "y (mm)",
+       y = NULL)
+y_boxplot
+```
+```{r fig.dim = c(5,7), fig.cap = "Fig. 07: Boxplot com os quartis da variável z"}
+z_boxplot <- ggplot(diamonds, aes(x = z)) +
+  geom_boxplot(fill = "azure2") +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"), 
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) +
+  labs(title = "Profundidade dos diamantes",
+       x = "z (mm)",
+       y = NULL)
+z_boxplot
+```
+```{r fig.dim = c(5,7), fig.cap = "Fig. 08: Boxplot com os quartis da variável depth"}
+depth_boxplot <- ggplot(diamonds, aes(x = depth)) +
+  geom_boxplot(fill = "azure2") +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.line = element_line(colour = "black"), 
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) +
+  labs(title = "Prufundidade percentual dos diamantes", 
+       x = "depth (mm)",
+       y = NULL)
+depth_boxplot
+```
+Existem muitos outliers nas variáveis analisadas acima, indicando que é melhor uma análise mais detalhada de cada variável para entender se os dados estão realmente corretos ou é necessário algum tratamento, podendo até ser necessário orientação de especialitas no assunto.
+Vamos observar como se comportam as distribuições de preço levando em consideração o peso(carat) e a claridade:
+```{r fig.dim = c(5,7), fig.cap = "Fig. 09: Facetamento com gráficos de preço X carat, agrupados pela claridade (clarity)"}
+ggplot(diamonds, aes(x = carat, y = price)) + 
+  geom_point(shape = 1) + 
+  facet_grid(. ~ clarity)
+```
+Como era de se esperar, a claridade _I1_ (pior) não tem muitos diamantes caros. Por outro lado, espera-se que os diamantes com a melhor claridade ( _IF_) tenham uma concentração maior de preços mais altos, o que não é observado. Seria a qualidade do corte destes diamantes um fator de redução de preço?
+Vamos ver:
+```{r fig.dim = c(5,7), fig.cap = "Fig. 10: Facetamento com gráficos de preço X carat, agrupados pela claridade (clarity) e pelo tipo de corte (cut)"}
+ggplot(diamonds, aes(x = carat, y = price)) + 
+  geom_point(shape = 1) + 
+  facet_grid(clarity ~ cut)
+
+```
+Na última linha de gráficos, vemos que para a melhor claridade _IF_, um bom número de diamantes possui o melhor corte _Ideal_. Seriam os diamantes com esta claridade os menos frequentes nos dados que temos?
+Vamos observar atraves de um gráfico de barras:
+```{r fig.dim = c(5,7), fig.cap = "Fig. 10: Gráfico de barras com a contagem de ocorrências de diamantes por claridade (clarity)"}
+ggplot(diamonds, aes(x=clarity)) +
+  geom_bar() +
+  geom_text(stat = 'count', 
+            aes(label = ..count..),
+            vjust = -0.5)
+```
+Com o gráfico de barras da categoria claridade ( _clarity_), conseguimos observar que a incidência de diamantes com a melhor claridade é baixa e, menor ainda é a incidência de diamantes com claridade ruim. Isto pode ser um fator que contribui para uma baixa observação de diamantes com a melhor claridade entre os diamantes com maiores preços. Para poder afirmar isto maiores análises seriam necessárias e no momento este não é o foco do presente trabalho.
+
+
+
