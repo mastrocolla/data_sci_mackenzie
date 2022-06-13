@@ -1,0 +1,549 @@
+---
+title: "Análise de Regressão Simples"
+author: "Marcos Vinícius Tadeu Mastrocolla"
+date: "31/05/2022"
+output:
+  word_document: 
+    reference_docx: style_exercicios.docx
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+	fig.align = "center",
+	# fig.keep = "high",
+	fig.show = "hold",
+  fig.align = "center",
+	cache = TRUE,
+	comment = "",
+	results = "markup",
+	tidy = TRUE
+)
+```
+# Importando bibliotecas
+
+```{r}
+library(ggplot2)
+```
+# Parametrizações
+
+```{r}
+# Tema ggplot padrão theme_classic()
+theme_set(theme_classic())
+```
+
+
+# Problema 1
+
+Para uma amostra de oito operadores de máquina, foram coletados o número de horas de treinamento (x) e o tempo necessário para completar o trabalho (y). Os dados coletados encontram-se na tabela abaixo:
+
+
+----- ----- ----- ----- ----- ----- ----- ----- -----
+  x    5.2   5.1   4.9   4.6   4.7   4.8   4.6   4.9
+  
+  y    13    15    16    20    19    17    21    16
+----- ----- ----- ----- ----- ----- ----- ----- -----
+
+Com estes dados, faça:
+
+1. Um gráfico de dispersão para os dados
+
+```{r}
+# Preparando o dataframe
+x <- c(5.2, 5.1, 4.9, 4.6, 4.7, 4.8, 4.6, 4.9)
+y <- c(13, 15, 16, 20, 19, 17, 21, 16)
+
+dados <- data.frame("x" = x, "y" = y)
+dados
+
+dados_disp <- ggplot(dados, aes(x = x, y = y, )) +
+  geom_point(color = "blue") +
+  xlim(0,6) +
+  ylim(0,25)
+plot(dados_disp)
+```
+_Conforme é possível observar com o gráfico de dispersão acima, os dados parecem seguir uma tendência linear._
+
+2. Determine o modelo de regressão linear simples entre as variáveis x e y, sendo y a variável resposta.
+
+```{r}
+str(dados)
+reg_dados <- lm(formula = y ~ x, data = dados)
+print(coef(reg_dados))
+```
+_Conseguimos os coeficientes do modelo de regressão com auxilio da função coef(), sendo $\beta_{0}$ = `r coef(reg_dados)[1]` e $\beta_{1}$ = `r coef(reg_dados)[2]`_
+
+```{r}
+summary(reg_dados)
+```
+
+_De acordo com o sumário acima, os resíduos apresentam uma distribuição próxima à normal com uma pequena assimetria entre o 1º e o 3º quartis. O modelo representa aproximadamente 94,8% ($R^{2}$) da variância e ambos coeficientes apresentam significância estatística (Pr(>|t|)) abaixo de 5%._
+
+```{r}
+par(mfrow = c(2,2))
+plot(reg_dados)
+```
+_Observando os gráficos acima, obtidos através do sumário da regressão linear, podemos ver que os resíduos estão distribuídos ao redor do zero com alguns resíduos um pouco mais afastados. A Normal Q-Q indica uma tendência normal dos resíduos, com oscilações para mais e para menos._
+
+```{r}
+reg_residuos <- as.data.frame(residuals(reg_dados))
+names(reg_residuos) <- c("residuos")
+
+reg_residuos_hist <- ggplot(data = reg_residuos, aes(residuos)) +
+  geom_histogram(stat = "bin", bins = 5, fill = "gray67")
+plot(reg_residuos_hist)
+
+```
+_O histograma acima mostra a distribuição dos resíduos com uma tendencia quase normal._
+_Abaixo vemos o grafico com os dados e a reta de regressão._
+```{r}
+dados_reta_reg <- ggplot(dados, aes(x = x, y = y, )) +
+  geom_point(color = "blue") +
+  xlim(0,6) +
+  ylim(0,25) +
+  geom_abline(aes(intercept = coef(reg_dados)[1],
+                  slope = coef(reg_dados)[2]),
+                  color = "orange")
+plot(dados_reta_reg)
+```
+_Com base nas observações acima, o modelo descreve bem o comportamento da variável dependente._
+
+
+# Problema 2
+
+O site Gapminder compilou uma base com dados sobre população, expectativa de vida e PIB per capta de 142 países, em 12 anos diferentes.
+
+ 1. Faça a importação dos dados, verifique a estrutura e faça um sumário estatístico.
+ 
+
+ 
+```{r}
+# Importando o arquivo com os dados
+populacao <- read.csv("pib_gapminder.csv")
+```
+ 
+_Consultando o início do dataframe._
+```{r}
+head(populacao, 10)
+```
+ 
+_Consultando o final do dataframe._
+```{r}
+tail(populacao, 10)
+```
+ 
+_O início e o fim do arquivo estão íntegros._
+_Consultando a estrutura do dataframe._
+```{r}
+str(populacao)
+min(populacao$expVida)
+max(populacao$expVida)
+```
+
+_Sumário estatístico._
+```{r}
+summary(populacao)
+```
+
+2. Classifique cada variável de acordo com seu tipo (qualitativa ordinal, nominal, quantitativa discreta, contínua, etc).
+
+--------------------------------------------------------------------------------
+Nome da         Descrição       Tipo de         Tipo de         Valores
+variável                        variável        Mensuração      Possíveis
+--------------- --------------- --------------- --------------- ----------------
+pais            País ao qual os Qualitativa/    Nominal         Países do mundo
+                dados pertencem Categórica                      
+
+ano             Ano em que os   Numérica        Intervalar      Números naturais
+                dados foram     discreta                        de 1952 a 2007
+                coletados
+                
+pop             População do    Numérica        Intervalar      Números naturais
+                país no ano em  contínua                        não nulos
+                questão
+
+continente      Continente ao   Qualitativa/    Nominal         5 continentes
+                qual o país     Categórica
+                pertence
+
+expVida         Expectativa de  Numérica        Razão           Números reais de
+                vida da         contínua                        23.5 a 83.6
+                população no 
+                ano em questão
+
+pibPercap       PIB percapta    Numérica        Razão           Números reais de
+                de cada país no contínua                        241.1 a 113532.1
+                ano em questão
+                (valores em U$)
+
+--------------------------------------------------------------------------------
+
+Tabela 1: dicionário de dados
+
+3. Faça uma tabela de frequência absoluta e uma tabela de frequência relativa para verificar o número de observações por continente.
+
+_Frequencia absoluta de cada continente em todo o dataframe:_
+```{r}
+continente_freqs <- as.data.frame(table(populacao$continente))
+names(continente_freqs) <- c("continente", "absoluta")
+print(continente_freqs)
+```
+
+_Frequencia relativa de cada continente:_
+```{r}
+# Calculando a frequencia relativa com a função prop.table()
+continente_freqs$relativa <- prop.table(continente_freqs$absoluta)
+print(continente_freqs)
+```
+
+4. Faça um gráfico de barras da tabela de frequência absoluta dos continentes.
+```{r}
+barplot(continente_freqs$absoluta, names.arg = continente_freqs$continente)
+```
+
+5. Faça um gráfico apropriado para relacionar o PIB per capta à expectativa de vida.
+```{r}
+ggplot(populacao, aes(x = expVida, 
+                      y = pibPercap, 
+                      color = continente)) +
+  geom_point() +
+  labs(x = "PIB per capta", y = "Expectativa de vida")
+```
+
+6. Crie duas novas colunas nesta base de dados com o logaritmo de PIB per capta, e o logaritmo da expectativa de vida. Estas colunas devem ter os nomes: lpibPercap e lexpVida, respectivamente.
+
+```{r}
+populacao$lpibPercap <- log(populacao$pibPercap)
+populacao$lexpVida <- log(populacao$expVida)
+head(populacao, 10)
+```
+
+
+7. Faça um gráfico apropriado para relacionar estas duas novas variáveis.
+
+```{r}
+ggplot(populacao, aes(x = lexpVida, 
+                      y = lpibPercap, 
+                      color = continente)) +
+  geom_point() +
+  labs(x = "PIB per capta (log)", y = "Expectativa de vida (log)") +
+  scale_x_continuous(trans = "log") +
+  scale_y_continuous(trans = "log") +
+  annotation_logticks(sides="lb")
+```
+
+
+8. Ajuste um modelo linear aos dados, utilizando as duas novas variáveis criadas, sendo lexpVida a variável resposta.
+
+_Criando o modelo de regressão linear:_
+```{r}
+lm_populacao <- lm(formula = lexpVida ~ lpibPercap, data = populacao)
+# Coeficientes da reta (beta0 e beta1)
+print(coef(lm_populacao))
+```
+
+
+9. Faça todas as análises da regressão, julgando:
+
+    1. Os gráficos diagnósticos
+    
+```{r}
+par(mfrow = c(2,2))
+plot(lm_populacao)
+```
+_Como podemos observar no gráfico superior esquerdo, os resíduos não estão distribuídos de forma uniforme em torno do zero, que pode ser notada mais a direita do gráfico._
+_O gráfico da normal Q-Q também exibe valores não sobrepostos à reta na esquerda do gráfico._
+_Estas observações são indícios de que o modelo pode não descrever bem os dados. Vamos observar o sumário._
+
+    2. Os parâmetros obtidos (avaliar o summary do modelo)
+    
+```{r}
+summary(lm_populacao)
+```
+_Olhando para os resíduos percebemos uma distribuição próxima à normal mas assimétrica._
+_O modelo tem significância estatística abaixo de 5%, o que é bom, mas explica apenas 61,3% da variância._
+
+    3. O poder de explicação do modelo.
+_Considerando a análise gráfica e o sumário acima, o modelo não possui um alto poder de explicação dos dados._
+
+
+# Problema 3
+Neste exercício vamos fazer uma análise de regressão com a base de dados autos.csv para tentar prever o preço de carro a partir de sua potência. Na nossa base de dados, estas variáveis são horsepower e price.
+
+Utilizando então a base disponibilizada, você deve:
+
+1. Criar um dicionário de dados, para entender o significado o tipo de cada variável; veja no link fornecido se há documentação disponível. 
+
+http://archive.ics.uci.edu/ml/datasets/Automobile
+
+--------------------------------------------------------------------------------
+Nome da         Descrição       Tipo de         Tipo de         Valores
+variável                        variável        Mensuração      Possíveis
+--------------- --------------- --------------- --------------- ----------------
+make            Fabricante do   Categórica      Nominal         alfa-romero, 
+                veículo                                         audi, bmw, 
+                                                                chevrolet, 
+                                                                dodge, honda,
+                                                                isuzu, jaguar, 
+                                                                mazda, 
+                                                                mercedes-benz, 
+                                                                mercury,
+                                                                mitsubishi, 
+                                                                nissan, peugot, 
+                                                                plymouth, 
+                                                                porsche, 
+                                                                renault, saab, 
+                                                                subaru, toyota, 
+                                                                volkswagen, 
+                                                                volvo
+                                                             
+fuel-type       Tipo de         Categórica      Nominal         diesel, gas
+                combustível     
+
+aspiration      Tipo de         Categórica      Nominal         std, turbo
+                aspiração de
+                ar do motor
+  
+num-of-doors    Número de       Categórica      Nominal         four, two
+                portas
+
+body-style      Carroceria      Categórica      Nominal         hardtop, wagon, 
+                                                                sedan, 
+                                                                hatchback, 
+                                                                convertible
+
+drive-wheels    Tração          Categórica      Nominal         4wd, fwd, rwd
+
+engine-         Posição do      Categórica      Nominal         front, rear
+                motor
+
+wheel-base      Distância entre Numérica        Intervalar      entre 86.6 e 
+                eixos           contínua                        120.9
+              
+length          Comprimento     Numérica        Intervalar      entre 141.1 e 
+                                contínua                        208.1
+                                                                
+width           Largura         Numérica        Intervalar      entre 60.3 e 
+                                contínua                        72.3
+
+height          Altura          Numérica        Intervalar      entre 47.8 e 
+                                contínua                        59.8.
+
+curb-weight     Peso do carro   Numérica        Intervalar      entre 1488 e 
+                vazio           contínua                        4066
+              
+engine-type     Tipo de motor   Categórica      Nominal         dohc, dohcv, l, 
+                                                                ohc, ohcf, ohcv, 
+                                                                rotor
+
+num-of-         Número de       Categórica      Nominal         eight, five, 
+cylinders       cilindros                                       four, six, 
+                                                                three, twelve, 
+                                                                two
+     
+engine-size     Tamanho do      Numérica        Intervalar      entre 61 e 326
+                motor           contínua
+
+fuel-system     Sistema de      Categórica      Nominal         1bbl, 2bbl, 
+                injeção de                                      4bbl, idi, mfi,
+                combustível                                     mpfi, spdi, spfi
+
+bore            Diâmtro do      Numérica        Intervalar      entre 2.54 e 
+                Cilindro        contínua                        3.94
+                                
+stroke          Curso do pistão Numérica        Intervalar      entre 2.07 e
+                                contínua                        4.17
+
+compression     Taxa de         Numérica        Intervalar      entre 7 e 23
+-ratio          Compressão      contínua
+
+horsepower      Potência do     Numérica        Intervalar      entre 48 e 288
+                Motor           contínua
+
+peak-rpm        Rotação máxima  Numérica        Intervalar      entre 4150 e 
+                do motor        contínua                        6600
+
+city-mpg        Consumo de      Numérica        Intervalar      entre 13 e 49
+                combustível na  contínua
+                cidade em mpg
+                (miles per
+                gallon)
+
+highway-mpg:    Consumo de      Numérica        Intervalar      entre 16 e 54
+                combustível na  contínua
+                estrada em mpg
+                (miles per
+                gallon)
+
+price           Preço do        Numérica        Intervalar      entre 5118 e
+                veículo         contínua                        45400
+--------------------------------------------------------------------------------
+
+Dicionário de dados
+
+
+2. Carregar a base para o R, certificando-se de que os dados estão corretos, de acordo com o dicionário de dados.
+
+```{r}
+# Carregando os dados
+autos <- read.csv("autos.csv", sep = ";")
+head(autos, 10)
+tail(autos, 10)
+```
+
+
+3. Explore a base de dados:
+
+    1. Sumários estatísticos dos dados
+_Analisando como as variáveis estão no dataframe_
+
+```{r}
+str(autos)
+```
+
+_O número de portas apesar de representado numericamente, é categórico. Convém converter para char pois estatisticas como media e desvio padrão não farão sentido quando aplicada a função summary()._
+```{r}
+autos$num.doors <- as.character(autos$num.doors)
+```
+
+_Algumas variáveis numéricas estão com o tipo errado (char), é necessário converter para o tipo correto (numeric)._
+_Mas antes as vígulas devem ser substituidas por pontos (separador de decimal padrão do R)._
+```{r}
+# Variáveis a serem convertidas
+to_convert <- c(8:11, 17:19)
+names(autos[to_convert])
+
+# Substituindo vírgulas por pontos
+autos[ , to_convert] <- apply(autos[ , to_convert], 2,
+                              function(x) gsub(",", ".", (x)))
+
+# Convertendo de para numeric
+autos[ , to_convert] <- apply(autos[ , to_convert], 2,
+                              function(x) as.numeric(x))
+
+str(autos)
+```
+
+_Agora é possível aplicar a função summary() corretamente._
+```{r}
+summary(autos)
+```
+
+
+    2. Tabelas quando apropriado
+
+_Tabela com a quantidade de veículos por tipo de combustível._    
+```{r}
+combustivel <- table(autos$fuel.type)
+combustivel
+```
+
+_Tabela com a quantidade de veículos por quantidade de cilindros._
+```{r}
+cilindros <- table(autos$num.cylinders)
+names(cilindros) <- c("3C", "4C", "5C", "6C", "8C", "12C")
+cilindros
+
+```
+
+
+    3. Gráficos exploratórios apropriados.
+    
+```{r}
+# Usando table() para facilitar o uso do barplot()
+fabricantes <- as.data.frame(table(autos$make))
+names(fabricantes) <- c("fabricante", "freq")
+
+tracao <- as.data.frame(table(autos$drive.wheels))
+names(tracao) <- c("tracao", "freq")
+```
+
+
+_Qual a fabricante mais presente nos dados analisados?_
+```{r}
+# Ajuste da margem para caber os rótulos das barras
+par(mar=c(7,4,2,2))
+
+barplot(fabricantes$freq, names.arg = fabricantes$fabricante, las = 2)
+```
+
+_A fabricante mais presente é a Volkswagen._
+
+_Qual o tipo de tração mais utilizada?_
+```{r}
+barplot(tracao$freq, names.arg = tracao$tracao)
+```
+_O tipo de tração mais utilizada nos dados analisados é a tração dianteira (fwd)._
+
+_Distribuição de carros por consumo de combustível (city.mpg X highway.mpg)._
+```{r}
+ggplot(autos, aes(x = highway.mpg, y = city.mpg, color = make)) +
+  geom_point() +
+  labs(x = "Consumo médio rodovia", y = "Consumo médio cidade")
+```
+
+_Distribuição de carros por consumo médio de combustível na cidade em relação ao peso (city.mpg X curb.weight)._
+```{r}
+ggplot(autos, aes(x = curb.weight, y = city.mpg, color = make)) +
+  geom_point() +
+  labs(x = "Peso veículo vazio", y = "Consumo médio cidade")
+```
+
+_Observa-se uma tendência no aumento do consumo de combustível para carros mais pesados, como era de se esperar._
+
+
+4. Considerando então apenas uma variável preditora (explicativa) no modelo (horsepower), tente ajustar um modelo para explicar o preço (price) dos carros.
+
+```{r}
+lm_autos <- lm(formula = price ~ horsepower, autos)
+```
+    1. Qual sua intuição sobre o relacionamento da “potência” de um carro com o seu preço?
+
+_A potência exerce influencia no preço mas ela sozinha não será capaz de descrever os dados. Outros fatores também devem exercer peso na precificação de um veículo como o tamanho dele (mais material é usado para construír), o tipo de acabamento (informação ausente no dataset), se o veículo é de luxo ou não (informação ausente no dataset)._
+
+5. Faça todas as análises da regressão (modelo), julgando:
+
+    1. Os gráficos diagnósticos
+    
+```{r}
+par(mfrow = c(2,2))
+plot(lm_autos)
+```
+    
+_O Gráfico dos resíduos vs valores ajustados não mostra uma distribuição aleatória, não há homocedasticidade nos resíduos._
+_A distribuição dos resíduos vista no gráfico da Normal Q-Q não está normalmente distribuída. Os resíduos não acompanham a reta, têm um desvio para baixo no início da reta e um desvio para cima no final dela, aproximando-se do formato de um "S"_
+
+```{r}
+autos_res <- as.data.frame(residuals(lm_autos))
+names(autos_res) <- c("residuos")
+
+autos_res_hist <- ggplot(data = autos_res, aes(residuos)) +
+  geom_histogram(stat = "bin", bins = 5, fill = "gray67")
+plot(autos_res_hist)
+```
+_Os resíduos não apresentam uma distribuição normal, existe uma cauda longa a direita e uma grande concentração de resíduos a esquerda além de os resíduos estarem muito distantes do zero._
+
+
+    2. Os parâmetros obtidos (avaliar o summary do modelo)
+```{r}
+summary(lm_autos)
+```
+    
+_O sumário do modelo reforça a observação feita no histograma acima e evidencia através dos quartis dos resíduos que a mediana está muito distante do zero e que não há simetria entre os quartis._
+_Apesar de haver significancia estatistica abaiso de 5%, o modelo representa apenas 66% dos dados._
+
+6. Interprete os resultados do ajuste:
+
+    1. Em que posição a reta corta o eixo Y? Isso faz sentido?
+_A reta corta o eixo Y na posição `r coef(lm_autos)[[1]]`, o que não faz sentido pois seria o mesmo que a fabricante pagar para que clientes levem um carro com 0 HP._
+
+
+    2. Como corrigir um modelo que apresenta este comportamento?
+_É necessário encontrar outra variável explicativa que descreva melhor a variável independente._
+
+7. Analise: Será que apenas a potência de um carro é suficiente para termos uma boa previsão do preço deste carro?
+_Apenas a potência não é suficiente para uma boa previsão de preço. O valor de um veículo não pode ser previsto apenas com uma variável de especificação técnica como a potência do motor._
+
+    1. O que indica isso no seu ajuste?
+_A análise gráfica e outras observações no sumário do modelo, já mencionadas acima, indicam que a potência do motor não é uma boa preditora de valores de veículos._
+

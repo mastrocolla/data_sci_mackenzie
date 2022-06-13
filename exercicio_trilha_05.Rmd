@@ -1,0 +1,116 @@
+---
+title: "Regressão linear multivariada"
+author: "Marcos Vinícius Tadeu Mastrocolla"
+date: '`r format(Sys.Date(), "%d/%m/%Y"); Sys.Date()`'
+output:
+  word_document: 
+    reference_docx: style_exercicios.docx
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+	fig.align = "center",
+	# fig.keep = "high",
+	fig.show = "hold",
+  fig.align = "center",
+	cache = TRUE,
+	comment = "",
+	results = "markup",
+	tidy = TRUE
+)
+```
+
+### Importando bibliotecas
+
+```{r}
+library(ggplot2)
+```
+
+### Parametrizações
+
+```{r}
+# Tema ggplot padrão theme_classic()
+theme_set(theme_classic())
+```
+
+# Problema 1
+
+Neste exercício vamos fazer uma análise de regressão multivariada com a mesma base de dados autos.csv para tentar prever o preço de carro a partir das seguintes variáveis: potência (horsepower), comprimento (length), tamanho do motor (engine.size), consumo na cidade (city.mpg).
+
+Utilizando então a base disponibilizada, você deve:
+
+1. Ajustar um modelo de regressão linear sendo price a variável alvo (resposta), como função das demais variáveis citadas acima: horsepower, length, engine.size, city.mpg.
+
+```{r echo=TRUE}
+# Importando os dados
+autos <- read.csv("autos.csv", sep = ";")
+str(autos)
+```
+
+
+_Assim como na atividade da trilha anterior, algumas variáveis numéricas estão com o tipo errado (char), é necessário converter para o tipo correto (numeric)._
+_Mas antes as vígulas devem ser substituidas por pontos (separador de decimal padrão do R)._
+```{r}
+# Variáveis a serem convertidas
+to_convert <- c(8:11, 17:19)
+names(autos[to_convert])
+
+# Substituindo vírgulas por pontos
+autos[ , to_convert] <- apply(autos[ , to_convert], 2,
+                              function(x) gsub(",", ".", (x)))
+
+# Convertendo de para numeric
+autos[ , to_convert] <- apply(autos[ , to_convert], 2,
+                              function(x) as.numeric(x))
+
+str(autos)
+```
+
+
+
+```{r}
+lm_autos <- lm(formula = price ~ horsepower + length + engine.size + city.mpg, data = autos)
+```
+
+2. Realizar a análise do modelo ajustado, avaliando o valor do R-quadrado, a significância estatística de cada parâmetro ajustado e a qualidade total do ajuste pela estatística F.
+
+```{r}
+sumario <- summary(lm_autos)
+sumario
+```
+_Exibindo os quartis dos resíduos em um histograma._
+```{r}
+lm_autos_res <- as.data.frame(residuals(lm_autos))
+names(lm_autos_res) <- c("residuos")
+
+lm_autos_hist <- ggplot(data = lm_autos_res, aes(residuos)) +
+  geom_histogram(stat = "bin", bins = 5, fill = "gray67")
+plot(lm_autos_hist)
+```
+_Conforme o histograma acima demonstra, a distribuição dos resíduos assemelha-se à normal, com um leve desvio para a esquerda._
+
+```{r include = FALSE}
+# Obtendo a importância estatística da variável 'city.mpg' a partir do sumário
+row_city.mpg_pval <- which(rownames(sumario$coefficients) == 'city.mpg')
+col_city.mpg_pval <- which(colnames(sumario$coefficients) == 'Pr(>|t|)')
+
+city.mpg_pval <- sumario$coefficients[row_city.mpg_pval, col_city.mpg_pval]
+```
+
+_Observando o sumário estatístico da regressão, é possível observar que as variáveis 'horsepower', 'lenght' e 'engine.size' tem importância estatística considerável. Diferentemente da variável 'city.mpg' que apresenta Pr(>|t|) de aproximadamente `r city.mpg_pval * 100`%, não tendo, assim, importância estatística. Apesar disto, o modelo consegue descrever `r summary(lm_autos)$adj.r.squared*100`% dos dados ($R^{2}$ ajustado)._
+_A estatística F confirma a adequação do modelo com um p-value de praticamente zero._ 
+
+3. Realizar a verificação de aderência do modelo às premissas estatísticas do método dos mínimos quadrados através dos gráficos diagnósticos, comentando o gráfico dos resíduos x valores ajustados e o gráfico da curva Normal-QQ.
+
+```{r}
+par(mfrow = c(2,2))
+plot(lm_autos)
+```
+_Os resíduos não estão tão bem distribuídos ao redor dos valores ajustados. Percebe-se uma relação entre os resíduo e os valores ajustados: à medida que os valores ajustados aumentam, os resíduos também aumentam._
+_No gráfico da Normal Q-Q vemos os resíduos não acompanhar a reta ajustada nos extremos._
+
+
+4. Fazer uma análise dos resultados do ajuste, discorrendo sobre o impacto de cada preditora, significativa do ponto de vista estatístico, no preço do carro.
+
+_Apesar de o sumário estatístico ser muito bom para o modelo, os gráficos nos mostram que não há homoscedasticidade entre os resíduos e os valores ajustados, além de os resíduos não serem bem representados no início e final da reta ajustada. Sendo assim, o modelo utilizando as variáveis 'horsepower', 'lenght', 'engine.size' e 'city.mpg' não pode ser considerado um bom preditor de preços de veículos._
